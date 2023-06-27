@@ -1,0 +1,46 @@
+---
+# tasks file for lighthouse-role
+    - name: Disable SELinux
+      ansible.posix.selinux:
+        state: disabled
+
+    - name: Install and
+      when:
+        - ansible_distribution == "CentOS"
+      block:
+        - name: Install epel repo
+          ansible.builtin.yum:
+            name:
+              - epel-release
+            state: present
+
+        - name: Install nginx
+          ansible.builtin.yum:
+            name:
+              - nginx
+            state: present
+
+        - name: Get lighthouse distrib
+          ansible.builtin.get_url:
+            url: "{{ urldist }}"
+            dest: "/tmp/master.zip"
+            mode: '0440'
+
+        - name: Install lighthouse
+          become: true
+          ansible.builtin.command: unzip /tmp/master.zip -d /var/www
+
+        - name: Build config file from template
+          ansible.builtin.template:
+            src: "file/clickhouse.j2"
+            dest: "/etc/nginx/conf.d/clickhouse.conf"
+            backup: true
+            mode: '0640'
+
+        - name: Start nginx service
+          ansible.builtin.service:
+            name: nginx
+            enabled: true
+            daemon_reload: true
+            state: started
+
